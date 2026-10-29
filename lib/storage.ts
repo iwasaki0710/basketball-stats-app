@@ -42,6 +42,7 @@ export function download(
 }
 export function csvCell(value: unknown) {
   let s = String(value ?? "");
-  if (/^[\s]*[=+@-]|^[\t\r\n]/.test(s)) s = "'" + s;
+  if (typeof value !== "number" && /^[\s]*[=+@-]|^[\t\r\n]/.test(s))
+    s = "'" + s;
   return '"' + s.replaceAll('"', '""') + '"';
 }

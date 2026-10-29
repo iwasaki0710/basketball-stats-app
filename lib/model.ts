@@ -454,3 +454,14 @@ export function scoringRuns(g: Game, quarter = 0): ScoringRun[] {
   }
   return runs;
 }
+/** FIBA: overtime continues the final regulation period for team-foul penalties. */
+export function teamFouls(g: Game, side: "own" | "opponent" = "own") {
+  const first = Math.min(g.quarter, g.quarters);
+  return g.events.filter(
+    (e) =>
+      e.kind === "PF" &&
+      e.quarter >= first &&
+      e.quarter <= g.quarter &&
+      isOpponent(e) === (side === "opponent"),
+  ).length;
+}

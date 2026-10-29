@@ -36,6 +36,7 @@ test("different accounts have different local workspace storage", () => {
   assert.equal(workspaceStorageKey(), "courtvision.workspace.v1");
 });
 test("CSV treats whitespace-prefixed formulas as text", () => {
+  assert.equal(csvCell(-5), '"-5"');
   assert.equal(csvCell("  =SUM(1,2)"), '"\'  =SUM(1,2)"');
   assert.equal(csvCell("\n+1"), '"\'\n+1"');
 });

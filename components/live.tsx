@@ -26,6 +26,7 @@ import {
   workspaceSchema,
   isOpponent,
   clockAt,
+  teamFouls,
 } from "@/lib/model";
 import { Panel, Avatar, Modal } from "./ui";
 import { Court } from "./charts";
@@ -200,17 +201,7 @@ export default function LiveRecorder({
               {clock(g.remaining)}
             </button>
             <small>
-              TEAM FOULS{" "}
-              <b>
-                {
-                  g.events.filter(
-                    (e) =>
-                      e.quarter === g.quarter &&
-                      e.kind === "PF" &&
-                      !isOpponent(e),
-                  ).length
-                }
-              </b>
+              TEAM FOULS <b>{teamFouls(g)}</b>
             </small>
           </div>
           <div className="score-team away">
@@ -218,17 +209,7 @@ export default function LiveRecorder({
             <div>
               <h2>{g.opponent}</h2>
               <small>{g.home ? "AWAY" : "HOME"}</small>
-              <small>
-                FOULS{" "}
-                {
-                  g.events.filter(
-                    (e) =>
-                      e.quarter === g.quarter &&
-                      e.kind === "PF" &&
-                      isOpponent(e),
-                  ).length
-                }
-              </small>
+              <small>FOULS {teamFouls(g, "opponent")}</small>
             </div>
             <span className="team-emblem opponent">
               {g.opponent.slice(0, 1)}

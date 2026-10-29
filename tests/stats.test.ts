@@ -205,3 +205,18 @@ test("an event at a stopped clock still counts as an appearance", () => {
   assert.equal(row.stats.pts, 2);
   assert.equal(row.stats.seconds, 0);
 });
+test("overtime team-foul penalties carry from the final regulation quarter", async () => {
+  const { teamFouls } = await import("../lib/model");
+  const g = base();
+  g.quarter = 5;
+  g.remaining = 280;
+  g.events = [
+    { ...event("PF", 2380), quarter: 4 },
+    { ...event("PF", 2390, ""), quarter: 4, side: "opponent" },
+    { ...event("PF", 2410), quarter: 5 },
+  ];
+  assert.equal(teamFouls(g), 2);
+  assert.equal(teamFouls(g, "opponent"), 1);
+  assert.equal(aggregate(g, 5).team.pf, 1);
+  assert.equal(aggregate(g).players.p1.pf, 2);
+});
