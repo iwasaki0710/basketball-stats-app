@@ -16,6 +16,7 @@ export function useCloud(
   data: Workspace,
   ready: boolean,
   onRemote: (w: Workspace) => void,
+  enabled = true,
 ) {
   const [link, setLink] = useState<CloudLink | null>(null),
     [status, setStatus] = useState("未接続"),
@@ -40,7 +41,7 @@ export function useCloud(
     setLink(next);
   };
   useEffect(() => {
-    if (!ready || loaded.current || !supabase) return;
+    if (!enabled || !ready || loaded.current || !supabase) return;
     loaded.current = true;
     const epoch = generation.current;
     supabase.auth.getSession().then(async ({ data: session }) => {
@@ -104,8 +105,9 @@ export function useCloud(
         setStatus("再接続できませんでした。端末の記録は保持しています");
       }
     });
-  }, [ready, onRemote]);
+  }, [ready, onRemote, enabled]);
   useEffect(() => {
+    if (!enabled) return;
     const online = () => setRetry((v) => v + 1);
     window.addEventListener("online", online);
     const sub = supabase?.auth.onAuthStateChange((event, session) => {
@@ -124,9 +126,10 @@ export function useCloud(
       window.removeEventListener("online", online);
       sub?.data.subscription.unsubscribe();
     };
-  }, []);
+  }, [enabled]);
   useEffect(() => {
     if (
+      !enabled ||
       !ready ||
       !link ||
       !supabase ||
@@ -202,9 +205,9 @@ export function useCloud(
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [hash, link, ready, conflict, retry, onRemote]);
+  }, [hash, link, ready, conflict, retry, onRemote, enabled]);
   useEffect(() => {
-    if (!link || !supabase || conflict) return;
+    if (!enabled || !link || !supabase || conflict) return;
     const epoch = generation.current;
     const timer = setInterval(async () => {
       if (
@@ -236,12 +239,13 @@ export function useCloud(
       }
     }, 10000);
     return () => clearInterval(timer);
-  }, [link, conflict, onRemote]);
+  }, [link, conflict, onRemote, enabled]);
   return {
     link,
     status,
     conflict,
     connect: (next: CloudLink) => {
+      if (!enabled) return;
       generation.current++;
       merges.current = 0;
       setConflict(false);
@@ -254,6 +258,7 @@ export function useCloud(
       setStatus("クラウド接続済み");
     },
     disconnect: () => {
+      if (!enabled) return;
       generation.current++;
       persist(null);
       setConflict(false);

@@ -185,8 +185,94 @@ try {
   console.log(
     "PASS: switching accounts does not expose the other account cache (mocked session)",
   );
+  const demoContext = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+  });
+  const cloudRequests = [];
+  await demoContext.route(
+    "https://courtvision-test.supabase.co/**",
+    async (route) => {
+      cloudRequests.push(route.request().url());
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "{}",
+      });
+    },
+  );
+  const expired = {
+    ...session(userA, "a@test.invalid"),
+    expires_at: Math.floor(Date.now() / 1000) - 3600,
+  };
+  await demoContext.addInitScript(
+    ({ session, workspace, userA }) => {
+      localStorage.setItem(
+        "sb-courtvision-test-auth-token",
+        JSON.stringify(session),
+      );
+      localStorage.setItem(
+        "courtvision.workspace.v1",
+        JSON.stringify(workspace),
+      );
+      localStorage.setItem(
+        `courtvision.workspace.v1:${userA}`,
+        JSON.stringify(workspace),
+      );
+      localStorage.setItem(
+        "courtvision.cloud.v1",
+        JSON.stringify({
+          teamId: userA,
+          userId: userA,
+          revision: 1,
+          role: "admin",
+          hash: JSON.stringify(workspace),
+        }),
+      );
+    },
+    { session: expired, workspace: privateWorkspace, userA },
+  );
+  const demo = await demoContext.newPage();
+  await demo.goto("http://127.0.0.1:3101/demo");
+  await expect(
+    demo.getByText("ログイン不要の体験デモ", { exact: true }),
+  ).toBeVisible();
+  await expect(demo.locator(".team-switch")).toContainText("青山工科大学");
+  await expect(demo.getByText("PRIVATE TEAM A", { exact: true })).toHaveCount(
+    0,
+  );
+  await demo.getByRole("button", { name: "試合を記録する" }).click();
+  await demo.getByRole("button", { name: "2P 成功 ＋", exact: true }).click();
+  await expect(
+    demo.locator(".score-team").first().locator(":scope > strong"),
+  ).toHaveText("2");
+  await expect(demo.locator("footer")).toContainText("この端末に自動保存");
+  await demo.reload();
+  await demo.getByRole("button", { name: "試合を記録する" }).click();
+  await expect(
+    demo.locator(".score-team").first().locator(":scope > strong"),
+  ).toHaveText("2");
+  await demo
+    .getByRole("button", { name: "設定・データ管理", exact: true })
+    .click();
+  await expect(
+    demo.getByText("デモ専用・クラウド同期なし", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    demo.getByRole("button", { name: "ログインリンクを送信", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await demo.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("courtvision.workspace.v1")).teamName,
+    ),
+  ).toBe("PRIVATE TEAM A");
+  expect(cloudRequests).toEqual([]);
+  await demoContext.close();
   console.log(
-    "3 mocked Auth browser scenarios passed. Live email delivery and production RLS still require a real project.",
+    "PASS: public demo ignores private caches and expired sessions without making cloud requests",
+  );
+  console.log(
+    "4 mocked Auth/demo browser scenarios passed. Live email delivery and production RLS still require a real project.",
   );
   await context.close();
 } catch (error) {

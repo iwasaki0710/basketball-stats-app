@@ -14,6 +14,19 @@ export default function Login() {
           チームの次の一歩へ<span className="title-dot">.</span>
         </h1>
         <p>登録したメールアドレスで、安全にログイン。</p>
+        <div className="portfolio-login">
+          <a className="secondary full" href="/demo">
+            ログインせずデモを試す <ArrowUpRight size={16} />
+          </a>
+          <a
+            className="text-link"
+            href="https://github.com/iwasaki0710/basketball-stats-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHubでソースコードを見る <ArrowUpRight size={13} />
+          </a>
+        </div>
         <form
           className="form"
           onSubmit={async (e) => {

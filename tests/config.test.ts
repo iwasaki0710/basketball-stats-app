@@ -1,3 +1,4 @@
+import { demoStorageKey } from "../lib/demo";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { supabaseConfigurationError, isPublicSupabaseKey } from "../lib/config";
@@ -32,6 +33,8 @@ test("public configuration accepts anon and publishable, never service-role or s
 });
 test("different accounts have different local workspace storage", () => {
   assert.notEqual(workspaceStorageKey("user-a"), workspaceStorageKey("user-b"));
+  assert.notEqual(demoStorageKey, workspaceStorageKey("user-a"));
+  assert.notEqual(demoStorageKey, workspaceStorageKey());
   assert.notEqual(workspaceStorageKey("user-a"), workspaceStorageKey());
   assert.equal(workspaceStorageKey(), "courtvision.workspace.v1");
 });

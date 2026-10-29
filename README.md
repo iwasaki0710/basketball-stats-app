@@ -8,6 +8,13 @@
 
 初めて公開する場合は、[Supabase・Vercel の作成から公開までの手順](docs/launch-guide.md)を順番に進めてください。
 
+## ES・ポートフォリオ用
+
+- **ログイン不要デモ**：https://basketball-stats-app-theta.vercel.app/demo
+- **GitHub**：https://github.com/iwasaki0710/basketball-stats-app
+
+Vercelで最新のmainがReadyになった後に利用できます。デモは架空データを使い、閲覧者の操作はそのブラウザだけに保存します。実際のチームの認証・クラウド同期・アカウント別データから分離しています。デモ画面からソースコードの閲覧と初期データへのリセットができます。[詳細](docs/portfolio.md)
+
 ## 実行
 
 Node.js 24 を使用します。
@@ -104,7 +111,7 @@ npm test
 npm run build
 npx playwright install chromium   # システムのChromiumがない場合
 npm run test:e2e
-npm run test:auth  # 実サービスに接続しない認証UI・アカウント分離の検証
+npm run test:auth  # 実サービスに接続しない認証UI・アカウント分離・公開デモの検証
 ```
 
 E2Eはビルド済みアプリを自動起動します。既存の3000番サーバーも使用できます。システムの `/usr/bin/chromium` を検出し、それ以外はPlaywright管理のChromiumを使います。任意のブラウザパスは `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` で指定できます。

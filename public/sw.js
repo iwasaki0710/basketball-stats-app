@@ -1,11 +1,21 @@
-const CACHE = "courtvision-v3";
+const CACHE = "courtvision-v4";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      await cache.addAll(["/", "/icon.svg", "/manifest.webmanifest"]);
-      const document = await cache.match("/");
-      const html = await document.text();
+      await cache.addAll([
+        "/",
+        "/demo",
+        "/icon.svg",
+        "/manifest.webmanifest",
+        "/demo.webmanifest",
+      ]);
+      const documents = await Promise.all(
+        ["/", "/demo"].map((path) => cache.match(path)),
+      );
+      const html = (
+        await Promise.all(documents.map((document) => document.text()))
+      ).join("\n");
       const assets = [
         ...new Set(
           [
@@ -42,27 +52,34 @@ self.addEventListener("fetch", (event) => {
     url.searchParams.has("_rsc")
   )
     return;
-  if (event.request.mode === "navigate") {
+  if (
+    event.request.mode === "navigate" &&
+    ["/", "/demo"].includes(url.pathname)
+  ) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
             event.waitUntil(
-              caches.open(CACHE).then((cache) => cache.put("/", copy)),
+              caches.open(CACHE).then((cache) => cache.put(url.pathname, copy)),
             );
           }
           return response;
         })
         .catch(() =>
-          caches.match("/").then((response) => response || Response.error()),
+          caches
+            .match(url.pathname)
+            .then((response) => response || Response.error()),
         ),
     );
     return;
   }
   if (
     url.pathname.startsWith("/_next/static/") ||
-    ["/icon.svg", "/manifest.webmanifest"].includes(url.pathname)
+    ["/icon.svg", "/manifest.webmanifest", "/demo.webmanifest"].includes(
+      url.pathname,
+    )
   ) {
     event.respondWith(
       caches.match(event.request).then(

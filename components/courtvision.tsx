@@ -18,7 +18,7 @@ import {
   Bell,
   Download,
 } from "lucide-react";
-import { createDemo } from "@/lib/demo";
+import { createDemo, demoStorageKey } from "@/lib/demo";
 import { Workspace, Game, workspaceSchema, clockAt } from "@/lib/model";
 import { fingerprint } from "@/lib/merge";
 import { saveWorkspaceAtomic, LocalConflict } from "@/lib/database";
@@ -47,21 +47,26 @@ const nav = [
   { id: "players", name: "選手管理", icon: Users },
   { id: "analysis", name: "チーム分析", icon: ChartNoAxesCombined },
 ] as const;
-export default function Courtvision() {
+export default function Courtvision({
+  demoMode = false,
+}: {
+  demoMode?: boolean;
+}) {
+  const client = demoMode ? null : supabase;
   const [data, setData] = useState<Workspace>(() => createDemo()),
     [loaded, setLoaded] = useState(false),
     [saving, setSaving] = useState(false),
     [page, setPage] = useState<Page>("dashboard"),
     [sidebar, setSidebar] = useState(false),
     [modal, setModal] = useState<
-      "player" | "game" | "help" | "notifications" | null
+      "player" | "game" | "help" | "notifications" | "resetDemo" | null
     >(null),
     [toast, setToast] = useState(""),
     [activeId, setActiveId] = useState<string | null>(null),
     [search, setSearch] = useState(""),
     [storageError, setStorageError] = useState(false),
     [sessionEmail, setSessionEmail] = useState<string | null>(null),
-    [authReady, setAuthReady] = useState(!supabase);
+    [authReady, setAuthReady] = useState(!client);
   const activeStorageKey = useRef(storageKey),
     activeUser = useRef<string | null | undefined>(undefined);
   const saveQueue = useRef<Promise<void>>(Promise.resolve()),
@@ -83,10 +88,10 @@ export default function Courtvision() {
       setActiveId(null);
       setModal(null);
       setSidebar(false);
-      if (supabase && !id) return;
-      activeStorageKey.current = workspaceStorageKey(
-        supabase ? id! : undefined,
-      );
+      if (client && !id) return;
+      activeStorageKey.current = demoMode
+        ? demoStorageKey
+        : workspaceStorageKey(client ? id! : undefined);
       skipSave.current = false;
       setStorageError(false);
       try {
@@ -96,7 +101,7 @@ export default function Courtvision() {
         savedSnapshot.current = stored ? JSON.stringify(stored) : null;
         setData(
           stored ??
-            (supabase
+            (client
               ? {
                   version: 1,
                   teamName: "新しいチーム",
@@ -117,19 +122,19 @@ export default function Courtvision() {
     };
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
-    if (!supabase) {
+    if (!client) {
       applySession(null);
       return;
     }
-    supabase.auth
+    client.auth
       .getSession()
       .then(({ data }) => applySession(data.session))
       .catch(() => setAuthReady(true));
-    const sub = supabase.auth.onAuthStateChange((_event, session) => {
+    const sub = client.auth.onAuthStateChange((_event, session) => {
       void applySession(session);
     });
     return () => sub.data.subscription.unsubscribe();
-  }, []);
+  }, [client, demoMode]);
   useEffect(() => {
     if (!loaded) return;
     const t = setInterval(
@@ -248,6 +253,7 @@ export default function Courtvision() {
     data,
     loaded && !storageError && !saving,
     receiveCloud,
+    !demoMode,
   );
   const canEdit = cloud.link?.role !== "viewer";
   const create = (kind: "player" | "game") => {
@@ -262,13 +268,13 @@ export default function Courtvision() {
       games.find((g) => g.id === activeId) ??
       games.find((g) => g.status === "live") ??
       games[games.length - 1];
-  if (supabase && !authReady)
+  if (client && !authReady)
     return (
       <main className="login-screen">
         <p role="status">セッションを確認しています…</p>
       </main>
     );
-  if (supabase && !sessionEmail) return <Login />;
+  if (client && !sessionEmail) return <Login />;
   if (!loaded)
     return (
       <main className="login-screen">
@@ -432,6 +438,37 @@ export default function Courtvision() {
           </div>
         </header>
         <main>
+          {demoMode && (
+            <div className="portfolio-banner">
+              <div>
+                <span className="season-pill">PORTFOLIO DEMO</span>
+                <strong>ログイン不要の体験デモ</strong>
+                <p>
+                  架空のチームで試合記録・分析を試せます。操作内容はこのブラウザだけに保存されます。
+                </p>
+              </div>
+              <div className="portfolio-actions">
+                <button
+                  className="secondary compact"
+                  onClick={() => setModal("resetDemo")}
+                >
+                  デモをリセット
+                </button>
+                <a
+                  className="secondary compact"
+                  href="https://github.com/iwasaki0710/basketball-stats-app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHubでコードを見る <ArrowUpRight size={14} />
+                </a>
+                <a className="text-link" href="/">
+                  チーム版のログインへ
+                </a>
+              </div>
+            </div>
+          )}
+
           {search ? (
             <>
               <div className="page-heading">
@@ -542,6 +579,7 @@ export default function Courtvision() {
                       );
                   }}
                   cloud={cloud}
+                  localOnly={demoMode}
                 />
               )}
             </>
@@ -564,6 +602,28 @@ export default function Courtvision() {
           </footer>
         </main>
       </div>
+      {demoMode && modal === "resetDemo" && (
+        <Modal
+          title="デモを初期状態に戻しますか？"
+          onClose={() => setModal(null)}
+        >
+          <div className="form">
+            <p>
+              このブラウザで編集した体験用データを、架空のサンプルデータに戻します。チーム版の記録には影響しません。
+            </p>
+            <button
+              className="primary full"
+              onClick={() => {
+                replace(createDemo());
+                setModal(null);
+                setPage("dashboard");
+              }}
+            >
+              初期データに戻す
+            </button>
+          </div>
+        </Modal>
+      )}
       {modal === "player" && (
         <Modal title="選手を追加" onClose={() => setModal(null)}>
           <PlayerForm

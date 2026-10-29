@@ -129,3 +129,5 @@ export function createDemo(): Workspace {
     games,
   };
 }
+
+export const demoStorageKey = "courtvision.workspace.demo.v1";

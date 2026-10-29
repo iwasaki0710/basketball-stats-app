@@ -23,6 +23,7 @@ export default function SettingsView({
   email,
   cloud,
   beforeLogout,
+  localOnly = false,
 }: {
   data: Workspace;
   onReplace: (w: Workspace) => void;
@@ -30,7 +31,9 @@ export default function SettingsView({
   email: string | null;
   cloud: CloudState;
   beforeLogout?: () => Promise<void>;
+  localOnly?: boolean;
 }) {
+  const client = localOnly ? null : supabase;
   const [busy, setBusy] = useState(false),
     [confirm, setConfirm] = useState<"empty" | "demo" | "load" | null>(null),
     [teamId, setTeamId] = useState(""),
@@ -40,9 +43,9 @@ export default function SettingsView({
     [cloudError, setCloudError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   async function loadTeams() {
-    if (!supabase) return;
+    if (!client) return;
     setBusy(true);
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = await client
       .from("memberships")
       .select("team_id,role,teams(name)");
     setBusy(false);
@@ -60,23 +63,23 @@ export default function SettingsView({
     if (normalized[0]) setTeamId(normalized[0].team_id);
   }
   async function attach(create = false) {
-    if (!supabase) return;
+    if (!client) return;
     setBusy(true);
     setCloudError("");
     try {
-      const { data: auth, error: authError } = await supabase.auth.getUser();
+      const { data: auth, error: authError } = await client.auth.getUser();
       if (authError || !auth.user) throw Error("ログインしてください");
       let id = teamId,
         role = "admin";
       if (create) {
-        const { data: idResult, error } = await supabase.rpc("create_team", {
+        const { data: idResult, error } = await client.rpc("create_team", {
           p_name: data.teamName,
         });
         if (error) throw error;
         id = String(idResult);
       } else role = teams.find((t) => t.team_id === id)?.role ?? "viewer";
       if (!id) throw Error("チームを選択してください");
-      const { data: row, error } = await supabase
+      const { data: row, error } = await client
         .from("workspaces")
         .select("revision,data")
         .eq("team_id", id)
@@ -254,23 +257,49 @@ export default function SettingsView({
             action={<Cloud size={18} className="accent" />}
           >
             <div className="settings-body">
-              {!supabase ? (
+              {!client ? (
                 <>
                   {supabaseConfigError && (
                     <p className="error-text" role="alert">
                       {supabaseConfigError}
                     </p>
                   )}
-                  <span className="status-tag">ローカルモード</span>
+                  <span className="status-tag">
+                    {localOnly
+                      ? "デモ専用・クラウド同期なし"
+                      : "ローカルモード"}
+                  </span>
                   <p>
-                    この端末に自動保存しています。クラウド保存・複数端末の利用には
-                    Supabase の接続設定が必要です。
+                    {localOnly ? (
+                      "体験用データはこのブラウザだけに保存します。ログインやクラウドへの保存は行いません。自由に記録・分析をお試しください。"
+                    ) : (
+                      <>
+                        この端末に自動保存しています。クラウド保存・複数端末の利用には
+                        Supabase の接続設定が必要です。
+                      </>
+                    )}
                   </p>
                   <div className="notice">
-                    README の手順で SQL マイグレーションを適用し、
-                    <code>NEXT_PUBLIC_SUPABASE_URL</code> と{" "}
-                    <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
-                    を設定して再起動してください。秘密鍵はブラウザに設定しないでください。
+                    {localOnly ? (
+                      <>
+                        実際のチームデータとは分離されています。
+                        <a
+                          className="text-link"
+                          href="https://github.com/iwasaki0710/basketball-stats-app"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          GitHubで実装を見る
+                        </a>
+                      </>
+                    ) : (
+                      <>
+                        README の手順で SQL マイグレーションを適用し、
+                        <code>NEXT_PUBLIC_SUPABASE_URL</code> と{" "}
+                        <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
+                        を設定して再起動してください。秘密鍵はブラウザに設定しないでください。
+                      </>
+                    )}
                   </div>
                 </>
               ) : !email ? (
@@ -280,7 +309,7 @@ export default function SettingsView({
                     e.preventDefault();
                     setBusy(true);
                     const f = new FormData(e.currentTarget);
-                    const { error } = await supabase!.auth.signInWithOtp({
+                    const { error } = await client!.auth.signInWithOtp({
                       email: String(f.get("email")),
                       options: { emailRedirectTo: window.location.origin },
                     });
@@ -383,7 +412,7 @@ export default function SettingsView({
                       try {
                         await beforeLogout?.();
                         cloud.disconnect();
-                        const { error } = await supabase!.auth.signOut();
+                        const { error } = await client!.auth.signOut();
                         if (error)
                           throw new Error(
                             "ログアウトできませんでした。通信状態を確認してください",
@@ -440,7 +469,7 @@ export default function SettingsView({
                   onSubmit={async (e) => {
                     e.preventDefault();
                     const f = new FormData(e.currentTarget);
-                    const { error } = await supabase!.rpc("add_team_member", {
+                    const { error } = await client!.rpc("add_team_member", {
                       p_team: cloud.link!.teamId,
                       p_email: String(f.get("email")),
                       p_role: String(f.get("role")),

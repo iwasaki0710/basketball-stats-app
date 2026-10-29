@@ -1,12 +1,23 @@
 import { readDocument, saveWorkspaceAtomic } from "./database";
 import { supabaseConfigurationError } from "./config";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Workspace, workspaceSchema } from "./model";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
   key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const supabaseConfigError = supabaseConfigurationError(url, key);
-export const supabase =
-  url && key && !supabaseConfigError ? createClient(url, key) : null;
+// Instantiate only when team-mode code actually accesses the SDK.
+// A public demo must not restore or refresh an existing private session.
+let client: SupabaseClient | undefined;
+export const supabase: SupabaseClient | null =
+  url && key && !supabaseConfigError
+    ? new Proxy({} as SupabaseClient, {
+        get(_target, property) {
+          client ??= createClient(url, key);
+          const value = Reflect.get(client, property, client);
+          return typeof value === "function" ? value.bind(client) : value;
+        },
+      })
+    : null;
 export const storageKey = "courtvision.workspace.v1";
 export function workspaceStorageKey(userId?: string) {
   return userId ? `${storageKey}:${userId}` : storageKey;

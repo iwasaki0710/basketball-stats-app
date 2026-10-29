@@ -4180,3 +4180,61 @@ footer > span:last-child {
   color: var(--lime);
   margin-top: 4px;
 }
+.portfolio-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 20px;
+  border: 1px solid #4a6133;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #21301d, #151e24);
+  margin-bottom: 24px;
+}
+.portfolio-banner strong {
+  display: inline-block;
+  font-size: 12px;
+  margin-left: 12px;
+  color: #dbeacd;
+}
+.portfolio-banner p {
+  font-size: 10px;
+  color: #91a48c;
+  margin-top: 8px;
+}
+.portfolio-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+}
+.portfolio-login {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.portfolio-login > .text-link {
+  justify-content: center;
+}
+.portfolio-actions .text-link {
+  font-size: 9px;
+}
+@media (max-width: 650px) {
+  .portfolio-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px;
+  }
+  .portfolio-banner strong {
+    font-size: 11px;
+    margin-left: 8px;
+  }
+  .portfolio-actions {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .portfolio-banner p {
+    line-height: 1.8;
+  }
+}
